@@ -74,7 +74,7 @@
 <text x="11" y="91.6" font-size="2.2">OLHOS_ANEL</text>
 <text x="49" y="91.6" font-size="2.2">amarelo</text>
 <text x="69" y="91.6" font-size="2.2">16</text>
-<text x="81" y="91.6" font-size="2.2">GPIO 25</text>
+<text x="81" y="91.6" font-size="2.2">GPIO 25 e 13</text>
 <circle cx="7.40" cy="95.90" r="2.4" fill="#f2c200" stroke="#000" stroke-width="0.12"/><text x="7.40" y="96.52" font-size="1.8" text-anchor="middle" font-weight="bold" fill="#000">2</text>
 <text x="11" y="96.6" font-size="2.2">OLHOS_MEIO_LATERAL</text>
 <text x="49" y="96.6" font-size="2.2">amarelo</text>
@@ -109,6 +109,6 @@
 <text x="11" y="126.6" font-size="2.2">BOCA_TRISTE</text>
 <text x="49" y="126.6" font-size="2.2">azul</text>
 <text x="69" y="126.6" font-size="2.2">10</text>
-<text x="81" y="126.6" font-size="2.2">GPIO 18</text>
+<text x="81" y="126.6" font-size="2.2">GPIO 18 e 4</text>
 <text x="5" y="134.0" font-size="1.8" fill="#555">LEDs de 4.8 mm. Menor distância entre centros: 6.85 mm (2.05 mm entre bordas). Coordenadas exatas em docs/leds.csv.</text>
 </svg>

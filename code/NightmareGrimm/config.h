@@ -5,25 +5,33 @@
 #include "expressoes.h"
 
 // ---------------------------------------------------------------------------
-// Pinos do ESP32 — um pino por grupo de LEDs (ver grupos_led.h)
+// Pinos do ESP32 (ver grupos_led.h)
 // ---------------------------------------------------------------------------
+// Os LEDs são ligados direto nos pinos, sem driver: pino -> resistor -> anodo,
+// catodo no GND (comum a todos). Cada pino fica com no máximo 8 LEDs (~16 mA),
+// por isso os grupos grandes usam 2 pinos: o primeiro liga a metade esquerda
+// do rosto (vista de frente) e o segundo, a metade direita.
+//
 // Escolhidos entre as saídas seguras do ESP32 DevKit: ficam de fora os pinos
 // de boot (0, 2, 5, 12, 15), os da memória flash (6–11), os que só funcionam
-// como entrada (34–39) e a serial USB (1, 3). 21 e 22 ficam livres para I2C.
-constexpr uint8_t PINO_OLHOS_ANEL           = 25;
-constexpr uint8_t PINO_OLHOS_MEIO_LATERAL   = 26;
-constexpr uint8_t PINO_OLHOS_MEIO_CENTRO    = 27;
-constexpr uint8_t PINO_SOBRANCELHAS_BRAVAS  = 32;
-constexpr uint8_t PINO_SOBRANCELHAS_TRISTES = 33;
-constexpr uint8_t PINO_BOCA_RETA            = 23;
-constexpr uint8_t PINO_BOCA_SORRISO         = 19;
-constexpr uint8_t PINO_BOCA_TRISTE          = 18;
+// como entrada (34–39), a serial USB (1, 3) e o 14 (oscila no boot).
+// 21 e 22 ficam livres para I2C.
+constexpr uint8_t SEM_PINO = 0xFF;
+constexpr uint8_t MAX_PINOS_POR_GRUPO = 2;
 
-// Nível do pino que ACENDE um grupo.
-//   HIGH: LEDs acionados por driver no lado do GND (ULN2803A, NPN ou MOSFET N),
-//         que é a ligação recomendada no README.
-//   LOW:  LEDs ligados entre 3,3 V e o pino, sem driver (só para testes
-//         rápidos com 1 LED por pino).
+constexpr uint8_t PINOS_OLHOS_ANEL[MAX_PINOS_POR_GRUPO]           = { 25, 13 };
+constexpr uint8_t PINOS_OLHOS_MEIO_LATERAL[MAX_PINOS_POR_GRUPO]   = { 26, SEM_PINO };
+constexpr uint8_t PINOS_OLHOS_MEIO_CENTRO[MAX_PINOS_POR_GRUPO]    = { 27, SEM_PINO };
+constexpr uint8_t PINOS_SOBRANCELHAS_BRAVAS[MAX_PINOS_POR_GRUPO]  = { 32, SEM_PINO };
+constexpr uint8_t PINOS_SOBRANCELHAS_TRISTES[MAX_PINOS_POR_GRUPO] = { 33, SEM_PINO };
+constexpr uint8_t PINOS_BOCA_RETA[MAX_PINOS_POR_GRUPO]            = { 23, SEM_PINO };
+constexpr uint8_t PINOS_BOCA_SORRISO[MAX_PINOS_POR_GRUPO]         = { 19, SEM_PINO };
+constexpr uint8_t PINOS_BOCA_TRISTE[MAX_PINOS_POR_GRUPO]          = { 18, 4 };
+
+// Nível do pino que ACENDE os LEDs.
+//   HIGH: LED entre o pino e o GND (o pino fornece a corrente). É a ligação
+//         do README.
+//   LOW:  LED entre o 3V3 e o pino (o pino absorve a corrente).
 constexpr uint8_t NIVEL_LED_ACESO = HIGH;
 
 // ---------------------------------------------------------------------------

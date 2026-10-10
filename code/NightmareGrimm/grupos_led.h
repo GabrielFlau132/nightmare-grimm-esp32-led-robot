@@ -1,4 +1,5 @@
-// Grupos de LEDs: cada grupo acende e apaga junto e usa um único pino.
+// Grupos de LEDs: cada grupo acende e apaga junto. Os pinos de cada grupo
+// ficam em config.h (os grupos grandes usam 2 pinos).
 //
 // Quantidades e posições finais: docs/gerar_layout.py (mapa em docs/mapa-leds.svg).
 #pragma once

@@ -25,6 +25,7 @@ nightmare-grimm-esp32-led-robot/
 │   ├── leds.csv                 coordenadas de cada LED em mm
 │   ├── mapa-leds.svg            posição e grupo de cada LED, escala 1:1
 │   ├── corte-frente.svg         arquivo de corte a laser da placa da frente
+│   ├── ligacoes.svg             folha de ligações: shield, fios entre os LEDs e tabela
 │   └── expressoes.svg           prévia das expressões com o layout final
 └── Models/                      esboços das expressões (formato e grupos, não posições)
 ```
@@ -54,21 +55,24 @@ aos esboços é a linha central da boca, que tem 4 LEDs em vez de 5.
 
 ## Grupos de LEDs
 
-Cada grupo acende e apaga junto e usa um único pino do ESP32. As quantidades
-vêm dos esboços, menos a linha central da boca (4 LEDs em vez de 5). O mapa em [`docs/mapa-leds.svg`](docs/mapa-leds.svg) mostra a
-posição de cada LED com o número do grupo (ver [Layout dos LEDs](#layout-dos-leds)).
+Cada grupo acende e apaga junto. Os grupos com mais de 8 LEDs usam 2 pinos,
+para nenhum pino passar de ~16 mA: o primeiro liga a metade esquerda do rosto
+(vista de frente) e o segundo, a direita. As quantidades vêm dos esboços, menos
+a linha central da boca (4 LEDs em vez de 5). O mapa em
+[`docs/mapa-leds.svg`](docs/mapa-leds.svg) mostra a posição de cada LED com o
+número do grupo (ver [Layout dos LEDs](#layout-dos-leds)).
 
-| # | Grupo                  | Cor no desenho | LEDs | GPIO | ULN2803A (entrada → saída) |
-|---|------------------------|----------------|------|------|----------------------------|
-| 1 | `OLHOS_ANEL`           | amarelo        | 16   | 25   | 1 → 18                     |
-| 2 | `OLHOS_MEIO_LATERAL`   | amarelo        | 4    | 26   | 2 → 17                     |
-| 3 | `OLHOS_MEIO_CENTRO`    | amarelo        | 4    | 27   | 3 → 16                     |
-| 4 | `SOBRANCELHAS_BRAVAS`  | vermelho       | 8    | 32   | 4 → 15                     |
-| 5 | `SOBRANCELHAS_TRISTES` | azul           | 6    | 33   | 5 → 14                     |
-| 6 | `BOCA_RETA`            | vermelho       | 4    | 23   | 6 → 13                     |
-| 7 | `BOCA_SORRISO`         | vermelho       | 6    | 19   | 7 → 12                     |
-| 8 | `BOCA_TRISTE`          | azul           | 10   | 18   | 8 → 11                     |
-|   | **Total**              |                | **58** |    |                            |
+| # | Grupo                  | Cor no desenho | LEDs   | GPIO (esq. / dir.) |
+|---|------------------------|----------------|--------|--------------------|
+| 1 | `OLHOS_ANEL`           | amarelo        | 16     | 25 / 13            |
+| 2 | `OLHOS_MEIO_LATERAL`   | amarelo        | 4      | 26                 |
+| 3 | `OLHOS_MEIO_CENTRO`    | amarelo        | 4      | 27                 |
+| 4 | `SOBRANCELHAS_BRAVAS`  | vermelho       | 8      | 32                 |
+| 5 | `SOBRANCELHAS_TRISTES` | azul           | 6      | 33                 |
+| 6 | `BOCA_RETA`            | vermelho       | 4      | 23                 |
+| 7 | `BOCA_SORRISO`         | vermelho       | 6      | 19                 |
+| 8 | `BOCA_TRISTE`          | azul           | 10     | 18 / 4             |
+|   | **Total**              |                | **58** | **10 pinos**       |
 
 Por que os olhos têm três grupos: cada olho tem 12 LEDs. Com o olho aberto,
 acendem os 10 do contorno. Na piscada acendem só os 4 da barra do meio, e os
@@ -77,8 +81,8 @@ nos dois estados (grupo 2). Os outros 8 do contorno são o grupo 1, e os 2 do
 centro da barra, que só acendem na piscada, são o grupo 3.
 
 Os pinos evitam os de boot (0, 2, 5, 12, 15), os da flash (6–11), os que são
-só de entrada (34–39) e a serial USB (1, 3). Os pinos 21 e 22 ficam livres para
-I2C. Para mudar a ligação, basta alterar `config.h`.
+só de entrada (34–39), a serial USB (1, 3) e o 14, que oscila no boot. Os pinos
+21 e 22 ficam livres para I2C. Para mudar a ligação, basta alterar `config.h`.
 
 ## Layout dos LEDs
 
@@ -126,69 +130,82 @@ Arquivos gerados:
 | `mapa-leds.svg` | gabarito em escala 1:1 com o número do grupo em cada LED. Imprima em 100% e confira a régua de 10 mm |
 | `corte-frente.svg` | arquivo de corte da placa (152 × 72 mm): contorno e 58 furos de 4,8 mm, tudo em vermelho |
 | `expressoes.svg` | como cada expressão fica acesa |
+| `ligacoes.svg` | folha de ligações (A4): shield do ESP32, fios entre os LEDs na vista de trás e tabela por pino |
 
-## Ligação elétrica (proposta)
+## Ligação elétrica
 
-Os desenhos não mostram a fiação. O que segue é uma proposta, e os valores
-precisam ser conferidos com o datasheet dos LEDs que você comprar.
+Os LEDs são ligados **direto nos pinos do ESP32**, sem driver, usando um
+shield de expansão (barras S/V/G em cada pino). A folha
+[`docs/ligacoes.svg`](docs/ligacoes.svg) mostra em qual pino S cada fio
+encaixa, onde fica cada resistor, como os LEDs são ligados entre si atrás da
+placa (um fio colorido por pino, mais o GND em preto) e a tabela de cada pino.
 
-### Por que usar um driver
-
-Um pino do ESP32 fornece 3,3 V e deve ficar abaixo de ~20 mA. O grupo 1 sozinho
-tem 16 LEDs, ou ~80 mA. Por isso os LEDs são alimentados por 5 V (USB) e cada
-grupo é ligado ao GND por um canal do **ULN2803A**. São 8 canais, um para cada
-grupo, e as entradas aceitam os 3,3 V do ESP32. Pino do ESP32 em `HIGH` acende
-o grupo.
+![Ligações](docs/ligacoes.svg)
 
 ```
-+5 V ──┬──►|──[R]──┐
-       ├──►|──[R]──┼── saída do canal N do ULN2803A
-       └──►|──[R]──┘        (um fio de retorno por grupo)
-
-GPIO do grupo N ──── entrada do canal N do ULN2803A
-GND do ESP32 ─────── pino 9 do ULN2803A ─── GND da fonte
-Pino 10 (COM) do ULN2803A: pode ficar desligado (só é usado com cargas indutivas)
+GPIO (pino S) ──[R]──┬──►|──┐
+                     ├──►|──┼── GND (comum a todos os LEDs)
+                     └──►|──┘
 ```
 
-- **Um resistor por LED, LEDs em paralelo.** Cada LED fica com o brilho
-  próprio, e um LED queimado não apaga os outros.
-- Atrás da frente ficam só **9 fios**: +5 V comum a todos os anodos e um
-  retorno por grupo. Com um conector de 9 vias entre a frente e a placa do
-  ESP32, dá para separar as duas partes na manutenção.
+- **Pino → resistor → perna longa; perna curta no GND.** O fio compartilhado
+  por todos os LEDs é o GND. O pino em `HIGH` acende os LEDs
+  (`NIVEL_LED_ACESO = HIGH` em `config.h`).
+- **No shield:** cada fio de GPIO encaixa no pino **S**, e o fio do GND num pino
+  **G** qualquer. Os pinos **V** não são usados, então a posição do jumper
+  5V/3.3V não importa.
+- **Um resistor por pino: 10 no total.** Os LEDs de um mesmo pino ficam em
+  paralelo e dividem o resistor. Ele vai soldado no meio do fio, perto do
+  conector que encaixa no S, coberto com termo-retrátil. Não dá para usar
+  menos de 10, porque cada pino acende e apaga sozinho.
+- **~2 mA por LED.** Um pino do ESP32 deve ficar abaixo de ~20 mA; o pino mais
+  carregado fica em ~13,5 mA. O script `docs/gerar_layout.py` acusa erro se
+  algum pino passar de 20 mA.
+- Atrás da frente ficam **11 fios**: o GND comum a todos os catodos e um fio
+  por pino. Com um conector de 11 vias entre a frente e o shield, dá para
+  separar as duas partes na manutenção.
 
 ### Resistores
 
-`R = (5 V − Vf do LED − ~0,9 V do ULN2803A) / corrente`. Com ~5 mA por LED,
-suficiente para LEDs de alto brilho atrás de MDF:
+Valores escolhidos entre os resistores disponíveis (100, 150, 200 e 47 Ω),
+para ficar perto de `(3,2 V − Vf do LED) / (LEDs do pino × 2 mA)`. A conta usa
+3,2 V porque o pino fornecendo corrente fica um pouco abaixo de 3,3 V.
 
-| Cor      | Vf típico (confirmar) | R calculado | Valor comercial |
-|----------|-----------------------|-------------|-----------------|
-| Vermelho | ~2,0 V                | 420 Ω       | 470 Ω           |
-| Amarelo  | ~2,1 V                | 400 Ω       | 390 Ω           |
-| Azul     | ~3,0 V                | 220 Ω       | 220 Ω           |
+| Pino    | LEDs        | Vf típico (confirmar) | Resistor | Corrente do pino |
+|---------|-------------|-----------------------|----------|------------------|
+| GPIO 25 | 8 amarelos  | ~1,95 V               | 100 Ω    | ~12,5 mA         |
+| GPIO 13 | 8 amarelos  | ~1,95 V               | 100 Ω    | ~12,5 mA         |
+| GPIO 32 | 8 vermelhos | ~1,85 V               | 100 Ω    | ~13,5 mA         |
+| GPIO 26 | 4 amarelos  | ~1,95 V               | 200 Ω    | ~6,3 mA          |
+| GPIO 27 | 4 amarelos  | ~1,95 V               | 200 Ω    | ~6,3 mA          |
+| GPIO 23 | 4 vermelhos | ~1,85 V               | 200 Ω    | ~6,8 mA          |
+| GPIO 19 | 6 vermelhos | ~1,85 V               | 150 Ω    | ~9 mA            |
+| GPIO 33 | 6 azuis     | ~2,8 V                | 47 Ω     | ~8,5 mA          |
+| GPIO 18 | 5 azuis     | ~2,8 V                | 47 Ω     | ~8,5 mA          |
+| GPIO 4  | 5 azuis     | ~2,8 V                | 47 Ω     | ~8,5 mA          |
 
-Se as cores reais forem outras, refaça a conta. O brilho entre cores se
-equilibra trocando o resistor.
+No total: 3 de 100 Ω, 3 de 200 Ω, 1 de 150 Ω e 3 de 47 Ω. Cada LED fica com
+~1,4–1,7 mA. Se faltar algum de 200 Ω, use 150 Ω no lugar. Para trocar algum
+valor, edite `RESISTOR_PINO` em `docs/gerar_layout.py` e gere a folha de novo:
+o script avisa se algum pino passar de 20 mA.
 
-### LEDs em série
+Com o resistor dividido, LEDs do mesmo pino podem ter brilhos levemente
+diferentes. Por isso use LEDs do mesmo lote em cada pino. Se um LED ficar
+bem mais forte que os vizinhos, troque esse LED.
 
-Com 5 V, colocar LEDs em série **não é recomendado**:
+**Atenção aos azuis:** em 3,3 V sobra só ~0,4 V para o resistor, então o
+brilho varia bastante com o Vf de cada LED. Antes de soldar tudo, teste um
+pino de cada cor com o resistor da tabela. Se o azul ficar fraco, coloque um
+resistor de 100 Ω em paralelo com o de 47 Ω daquele pino.
 
-- **Com o ULN2803A:** dois vermelhos em série (≈ 4,0 V) mais a queda do driver
-  (≈ 0,9 V) já somam ~4,9 V. Não sobra margem para o resistor.
-- **Com MOSFET canal N de nível lógico** (ex.: AO3400) no lugar do ULN2803A: a
-  queda é quase zero, então dá para ligar **pares** de vermelhos ou amarelos em
-  série com ~180 Ω, o que reduz o número de resistores. Em compensação, a
-  corrente fica mais sensível à variação de Vf. Azuis nunca cabem em série em
-  5 V.
-- **Séries mais longas** exigiriam outra fonte (9–12 V). Além disso, grupos de
-  6 e 10 LEDs não se dividem igualmente em séries iguais.
+LEDs em série não funcionam em 3,3 V: dois LEDs já somam mais tensão do que
+o ESP32 fornece.
 
 ### Consumo
 
-O pior caso é `FELIZ_BRAVO`: 38 LEDs × 5 mA ≈ 0,2 A, mais o ESP32
-(~0,05–0,1 A sem Wi-Fi). Fica abaixo dos 0,5 A de uma porta USB. O ULN2803A
-dissipa ~0,2 W nesse caso, sem problema.
+O pior caso é `FELIZ_BRAVO`: 38 LEDs × 2 mA ≈ 76 mA, mais o ESP32
+(~0,05–0,1 A sem Wi-Fi). Uma porta USB ou a entrada DC do shield aguentam
+isso com folga.
 
 ## Montagem em MDF
 
@@ -198,13 +215,17 @@ dissipa ~0,2 W nesse caso, sem problema.
   `DIAMETRO_FURO` no script e gere de novo. Os LEDs entram por trás e a aba os
   segura. Com 2 mm de folga, as abas (~5,8 mm) de LEDs vizinhos não se
   encostam.
-- **Atrás da frente:** os resistores ficam soldados na perna de cada LED, mais
-  o fio de +5 V e os retornos de cada grupo. Cola quente ou uma segunda camada
+- **Atrás da frente:** só fios, sem resistor: o fio de GND nas pernas curtas
+  e, em cada pino, um fio ligando as pernas longas dos LEDs daquele pino. Use a
+  vista de trás de `docs/ligacoes.svg`, que já está espelhada e mostra cada
+  fio. Cola quente ou uma segunda camada
   de MDF prende os LEDs.
-- **Eletrônica:** ESP32 em barra de pinos fêmea (sai sem dessoldar) e ULN2803A
-  em soquete, numa placa perfurada. Deixe uma abertura para o cabo USB.
+- **Eletrônica:** ESP32 no shield de expansão. Os 11 fios da frente
+  encaixam nele com conectores fêmea: os 10 de GPIO nos pinos S (cada um com o
+  seu resistor no meio do fio) e o GND num pino G. Deixe uma abertura para o
+  cabo USB ou para a entrada DC.
 - **Manutenção:** tampa traseira removível (parafusos ou encaixe sem cola) e o
-  conector de 9 vias entre a frente e a placa.
+  conector de 11 vias entre a frente e o shield.
 
 ### Pontos que os desenhos não definem
 
@@ -248,8 +269,8 @@ todas as expressões sem computador.
 
 | Constante | Padrão | O que faz |
 |-----------|--------|-----------|
-| `PINO_*` | ver tabela de grupos | pino de cada grupo |
-| `NIVEL_LED_ACESO` | `HIGH` | `HIGH` com driver no GND (ULN2803A/NPN/MOSFET). `LOW` com LED ligado direto entre 3,3 V e o pino |
+| `PINOS_*` | ver tabela de grupos | pinos de cada grupo (até 2; `SEM_PINO` na posição que sobra) |
+| `NIVEL_LED_ACESO` | `HIGH` | `HIGH` com LED entre o pino e o GND (ligação do README). `LOW` com LED entre o 3V3 e o pino |
 | `EXPRESSAO_INICIAL` | `NEUTRO` | expressão ao ligar |
 | `DEMO_AO_LIGAR` / `DEMO_INTERVALO_MS` | `true` / 5000 | modo demonstração |
 | `PISCADA_INTERVALO_MIN_MS` / `_MAX_MS` | 2500 / 6000 | espera sorteada entre piscadas |
@@ -284,8 +305,10 @@ grupos ele acende.
 ## Montagem passo a passo (sugestão)
 
 1. Grave o código com nada ligado e confira a ajuda no Monitor Serial.
-2. Monte o ULN2803A e **um** grupo pequeno (ex.: `BOCA_RETA`). Use `t` e `4`
+2. Ligue **um** grupo pequeno (ex.: `BOCA_RETA`, GPIO 23, com o resistor de
+   200 Ω). Use `t` e `4`
    para conferir.
 3. Acrescente os outros grupos um por vez, rodando `t` e comparando com
    `docs/mapa-leds.svg`. O número em cada LED do mapa é o grupo dele.
-4. Com tudo funcionando na bancada, passe para a caixa de MDF.
+4. Com tudo funcionando na bancada, passe para a caixa de MDF, com o ESP32
+   no shield.
