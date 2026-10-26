@@ -1,4 +1,4 @@
-"""Layout dos LEDs do Nightmare Grimm (frente de 152 x 72 mm, LEDs de 4,8 mm).
+"""Layout dos LEDs do Nightmare Grimm (frente de 115 x 55 mm, LEDs de 2,7 mm).
 
 Os desenhos de Models/ são o esboço: definem quantos LEDs há, em que grupo
 cada um fica e o formato de cada parte do rosto. Este script define a posição
@@ -18,8 +18,8 @@ import sys
 # ---------------------------------------------------------------------------
 # Medidas gerais (mm). Origem no canto superior esquerdo da frente, y para baixo.
 # ---------------------------------------------------------------------------
-LARGURA, ALTURA = 152.0, 72.0
-DIAMETRO_LED = 4.8
+LARGURA, ALTURA = 115.0, 55.0
+DIAMETRO_LED = 2.7
 FOLGA_MIN = 2.0        # entre as bordas de dois LEDs quaisquer
 MARGEM_MIN = 2.0       # entre a borda de um LED e a borda da frente
 DIAMETRO_FURO = DIAMETRO_LED  # ajuste depois de testar o corte num retalho
@@ -33,29 +33,29 @@ MEIO = LARGURA / 2
 # Olho: 4 colunas com passo OLHO_PASSO (coluna 0 = de fora, 3 = de dentro).
 #   Colunas 0 e 3: laterais, 3 LEDs cada, com passo vertical OLHO_PASSO_LATERAL.
 #   Colunas 1 e 2: 1 LED no topo, 1 embaixo e 1 no meio (barra da piscada).
-OLHO_X, OLHO_Y = 22.8, 33.6   # centro do olho esquerdo
-OLHO_PASSO = 7.3
-OLHO_PASSO_LATERAL = 8.3
-OLHO_TOPO = 12.7              # do centro do olho até o LED do topo/base
+OLHO_X, OLHO_Y = 17.5, 25.5   # centro do olho esquerdo
+OLHO_PASSO = 5.5
+OLHO_PASSO_LATERAL = 6.25
+OLHO_TOPO = 9.5               # do centro do olho até o LED do topo/base
 
 # Sobrancelhas: LEDs igualmente espaçados, nas colunas do olho.
 #   (coluna da ponta de fora, y da ponta de fora, quanto desce a cada LED)
 #   Coluna -1 fica um passo para fora do olho. Descer positivo = em direção
 #   ao centro do rosto.
-SOBRANCELHA_BRAVA = (0, 4.4, 2.7)      # 4 LEDs, colunas 0..3, desce para o centro
-SOBRANCELHA_TRISTE = (-1, 19.4, -2.7)  # 3 LEDs, colunas -1..1, sobe para o centro
+SOBRANCELHA_BRAVA = (0, 3.5, 2.0)      # 4 LEDs, colunas 0..3, desce para o centro
+SOBRANCELHA_TRISTE = (-1, 14.75, -2.0)  # 3 LEDs, colunas -1..1, sobe para o centro
 
 # Boca: colunas com passo BOCA_PASSO, centradas no meio da frente.
 #   Linha vermelha (reta) em BOCA_Y; linha azul (triste) BOCA_LINHAS abaixo.
 #   Cada linha tem BOCA_LEDS_LINHA LEDs. Cada canto tem 2 LEDs nas 2 colunas
 #   seguintes à ponta da linha, um degrau acima/abaixo dela, e
 #   1 LED na ponta, deslocado BOCA_PONTA (dx, dy) do último LED do degrau.
-BOCA_PASSO = 7.0
+BOCA_PASSO = 5.25
 BOCA_LEDS_LINHA = 4
-BOCA_Y = 53.9
-BOCA_LINHAS = 7.0
-BOCA_DEGRAU = 3.3
-BOCA_PONTA = (6.0, 3.3)
+BOCA_Y = 40.75
+BOCA_LINHAS = 5.25
+BOCA_DEGRAU = 2.5
+BOCA_PONTA = (4.5, 2.5)
 
 # ---------------------------------------------------------------------------
 # Grupos (mesma ordem e números do firmware: code/NightmareGrimm/grupos_led.h)
@@ -402,7 +402,7 @@ def escrever_ligacoes(leds, caminho):
           "do jumper 5V/3.3V não importa.", 2.2, 'fill="#444"')
 
     # --- 2. Fios entre os LEDs (vista de trás) ---------------------------
-    k = 1.1
+    k = min(170 / LARGURA, 79 / ALTURA)  # ampliação da vista de trás
     vx, vy = (w - LARGURA * k) / 2, y_b + 24
     texto(5, vy - 14, "2. Fios entre os LEDs: vista de trás (espelhada: a esquerda aqui é a direita do rosto)", 3.4,
           'font-weight="bold"')

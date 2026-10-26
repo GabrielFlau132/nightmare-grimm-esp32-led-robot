@@ -1,7 +1,7 @@
 # nightmare-grimm-esp32-led-robot
 
 Nightmare Grimm é um robô de MDF com um rosto de LEDs controlado por um ESP32.
-São cinco expressões, piscada automática e uma frente de 15,2 × 7,2 cm, onde
+São cinco expressões, piscada automática e uma frente de 11,5 × 5,5 cm, onde
 só os LEDs ficam visíveis.
 
 ![As cinco expressões e a piscada](docs/expressoes.svg)
@@ -94,21 +94,21 @@ as distâncias e gera os arquivos de `docs/`.
 
 Regras do layout:
 
-- **LEDs de 4,8 mm.** Entre as bordas de dois LEDs quaisquer há pelo menos
-  **2 mm**, ou seja, 6,8 mm entre centros. Nenhum LED se sobrepõe a outro. No
-  layout atual, o par mais próximo fica a 2,05 mm entre bordas, e o sorriso fica a
-  pelo menos 12,9 mm (entre centros) dos LEDs dos olhos.
+- **LEDs de 2,7 mm.** Entre as bordas de dois LEDs quaisquer há pelo menos
+  **2 mm**, ou seja, 4,7 mm entre centros. Nenhum LED se sobrepõe a outro. No
+  layout atual, o par mais próximo fica a 2,45 mm entre bordas, e o sorriso fica a
+  pelo menos 9,7 mm (entre centros) dos LEDs dos olhos.
 - **Distância até a borda da frente:** pelo menos 2 mm a partir da borda do LED.
 - **Espaçamento uniforme:** em cada linha os LEDs ficam igualmente espaçados,
-  com passos entre 6,85 e 8,5 mm em todo o rosto.
-- **Olhos:** 4 colunas a cada 7,3 mm. As laterais têm 3 LEDs a cada 8,3 mm.
+  com passos entre 5,15 e 6,4 mm em todo o rosto.
+- **Olhos:** 4 colunas a cada 5,5 mm. As laterais têm 3 LEDs a cada 6,25 mm.
   As colunas do meio têm topo, barra e base.
 - **Sobrancelhas:** ficam nas mesmas colunas dos olhos.
-  - **Brava:** desce 2,7 mm a cada LED em direção ao centro do rosto.
-  - **Triste:** começa uma coluna para fora do olho e sobe 2,7 mm a cada LED.
-- **Boca:** colunas a cada 7 mm, centradas na frente, com 4 LEDs em cada
+  - **Brava:** desce 2 mm a cada LED em direção ao centro do rosto.
+  - **Triste:** começa uma coluna para fora do olho e sobe 2 mm a cada LED.
+- **Boca:** colunas a cada 5,25 mm, centradas na frente, com 4 LEDs em cada
   linha central.
-  - **Linha vermelha** (boca reta) e **linha azul** (boca triste): 7 mm de
+  - **Linha vermelha** (boca reta) e **linha azul** (boca triste): 5,25 mm de
     distância entre si.
   - **Cantos do sorriso:** sobem a partir da linha vermelha.
   - **Cantos da tristeza:** descem a partir da linha azul.
@@ -128,7 +128,7 @@ Arquivos gerados:
 |---------|----------|
 | `leds.csv` | coordenadas (mm) de cada LED, com grupo, cor e pino. A origem é o canto superior esquerdo da frente |
 | `mapa-leds.svg` | gabarito em escala 1:1 com o número do grupo em cada LED. Imprima em 100% e confira a régua de 10 mm |
-| `corte-frente.svg` | arquivo de corte da placa (152 × 72 mm): contorno e 58 furos de 4,8 mm, tudo em vermelho |
+| `corte-frente.svg` | arquivo de corte da placa (115 × 55 mm): contorno e 58 furos de 2,7 mm, tudo em vermelho |
 | `expressoes.svg` | como cada expressão fica acesa |
 | `ligacoes.svg` | folha de ligações (A4): shield do ESP32, fios entre os LEDs na vista de trás e tabela por pino |
 
@@ -209,12 +209,12 @@ isso com folga.
 
 ## Montagem em MDF
 
-- **Frente (15,2 × 7,2 cm):** corte `docs/corte-frente.svg`. Ele tem o
-  contorno da placa e os furos de 4,8 mm, em escala 1:1. Teste num retalho
+- **Frente (11,5 × 5,5 cm):** corte `docs/corte-frente.svg`. Ele tem o
+  contorno da placa e os furos de 2,7 mm, em escala 1:1. Teste num retalho
   antes, porque a largura do corte do laser varia. Se precisar, mude
   `DIAMETRO_FURO` no script e gere de novo. Os LEDs entram por trás e a aba os
-  segura. Com 2 mm de folga, as abas (~5,8 mm) de LEDs vizinhos não se
-  encostam.
+  segura. Com pelo menos 2 mm de folga entre os LEDs, as abas de LEDs vizinhos
+  não se encostam.
 - **Atrás da frente:** só fios, sem resistor: o fio de GND nas pernas curtas
   e, em cada pino, um fio ligando as pernas longas dos LEDs daquele pino. Use a
   vista de trás de `docs/ligacoes.svg`, que já está espelhada e mostra cada
