@@ -289,10 +289,18 @@ def escrever_expressoes(leds, caminho):
         f.write("\n".join(s).replace('fill="#e6e6e6" stroke="#b5b5b5"', 'fill="#3a3a3c" stroke="#55555a"') + "\n")
 
 
-# Cor do fio de cada pino na folha de ligações (só para o desenho).
-COR_FIO = {25: "#ef6c00", 13: "#6d4c41", 26: "#00897b", 27: "#5e35b1", 32: "#c2185b",
-           33: "#1565c0", 23: "#7cb342", 19: "#9e9d24", 18: "#00acc1", 4: "#8e8e8e"}
+# Cor do fio de cada pino, na ordem dos pinos em GRUPOS (25, 13, 26, 27, 32, 33,
+# 23, 19, 18, 4). O GND é preto.
+CORES_DOS_FIOS = [("marrom", "#7b4a2a"), ("vermelho", "#d32f2f"), ("laranja", "#f57c00"),
+                  ("amarelo", "#fdd835"), ("verde", "#388e3c"), ("azul", "#1976d2"),
+                  ("roxo", "#7b1fa2"), ("cinza", "#9e9e9e"), ("branco", "#ffffff"),
+                  ("vinho", "#7b1a2e")]
+_PINOS_EM_ORDEM = [pino for *_, pinos in GRUPOS for pino in pinos]
+assert len(_PINOS_EM_ORDEM) == len(CORES_DOS_FIOS), "uma cor de fio por pino"
+NOME_FIO = {pino: nome for pino, (nome, _) in zip(_PINOS_EM_ORDEM, CORES_DOS_FIOS)}
+COR_FIO = {pino: cor for pino, (_, cor) in zip(_PINOS_EM_ORDEM, CORES_DOS_FIOS)}
 COR_GND = "#111111"
+CONTORNO_FIO = "#333333"  # borda escura: deixa o fio branco e o amarelo visíveis no papel
 # Shield de expansão do ESP32 (barras S/V/G), vista de cima, antena para cima.
 SHIELD_ESQUERDA = ["EN", "VP", "VN", "D34", "D35", "D32", "D33", "D25", "D26", "D27", "D14", "D12", "D13"]
 SHIELD_DIREITA = ["D23", "D22", "TX0", "RX0", "D21", "D19", "D18", "D5", "D17", "D16", "D4", "D2", "D15"]
@@ -337,7 +345,13 @@ def escrever_ligacoes(leds, caminho):
             d = f"M{x1:.2f} {y1:.2f}Q{mx:.2f} {my:.2f} {x2:.2f} {y2:.2f}"
         else:
             d = f"M{x1:.2f} {y1:.2f}L{x2:.2f} {y2:.2f}"
-        s.append(f'<path d="{d}" fill="none" stroke="{cor}" stroke-width="{larg}" stroke-linecap="round"/>')
+        traco(d, cor, larg)
+
+    def traco(d, cor, larg):
+        s.append(f'<path d="{d}" fill="none" stroke="{CONTORNO_FIO}" stroke-width="{larg + 0.35:.2f}" '
+                 'stroke-linecap="round" stroke-linejoin="round"/>')
+        s.append(f'<path d="{d}" fill="none" stroke="{cor}" stroke-width="{larg}" stroke-linecap="round" '
+                 'stroke-linejoin="round"/>')
 
     por_pino = ligacoes_por_pino(leds)
     info_pino = {pino: (n, lado, ids) for pino, n, lado, ids in por_pino}
@@ -373,27 +387,26 @@ def escrever_ligacoes(leds, caminho):
             n, lado_rosto, ids = info_pino[gpio]
             cor = COR_FIO[gpio]
             metade = " esq." if lado_rosto == "metade esquerda" else " dir." if lado_rosto else ""
-            rotulo = f"GPIO {gpio}: {curto[n]}{metade} ({len(ids)})"
+            rotulo = f"GPIO {gpio} ({NOME_FIO[gpio]}): {curto[n]}{metade} ({len(ids)})"
             x_s = cx + lado * 37
-            x_fim = x_s + lado * 20
+            x_fim = x_s + lado * 16.5
             fio(x_s, y, x_fim, y, cor, 0.9)
-            s.append(f'<circle cx="{x_s:.2f}" cy="{y:.2f}" r="0.9" fill="{cor}"/>')
+            s.append(f'<circle cx="{x_s:.2f}" cy="{y:.2f}" r="0.9" fill="{cor}" stroke="{CONTORNO_FIO}" stroke-width="0.2"/>')
             # resistor soldado no meio do fio, coberto com termo-retrátil
             r = resistor_do_pino(gpio)
             xr = min(x_s + lado * 6, x_s + lado * 14)
             s.append(f'<rect x="{xr:.2f}" y="{y - 1.1:.2f}" width="8" height="2.2" rx="0.6" '
                      'fill="#e8d3a9" stroke="#333" stroke-width="0.25"/>')
             texto(xr + 4, y + 0.6, f"{r} Ω", 1.6, 'text-anchor="middle" fill="#222" font-weight="bold"')
-            texto(x_fim + lado * 1.5, y + 0.8, rotulo, 2.1,
-                  f'text-anchor="{"end" if lado < 0 else "start"}" fill="{cor}" font-weight="bold"')
+            texto(x_fim + lado * 1.2, y + 0.7, rotulo, 1.9,
+                  f'text-anchor="{"end" if lado < 0 else "start"}" fill="#222" font-weight="bold"')
     # GND comum: qualquer pino G serve
     x_g, y_g = cx - 28.6, yf[-1]
     y_baixo = yf[-1] + 7
     x_fim = cx - 57
-    s.append(f'<path d="M{x_g:.2f} {y_g:.2f}V{y_baixo:.2f}H{x_fim:.2f}" fill="none" stroke="{COR_GND}" '
-             'stroke-width="0.9"/>')
+    traco(f"M{x_g:.2f} {y_g:.2f}V{y_baixo:.2f}H{x_fim:.2f}", COR_GND, 0.9)
     s.append(f'<circle cx="{x_g:.2f}" cy="{y_g:.2f}" r="0.9" fill="{COR_GND}" stroke="#fff" stroke-width="0.2"/>')
-    texto(x_fim - 1.5, y_baixo + 0.8, f"GND: perna curta dos {len(leds)} LEDs", 2.1,
+    texto(x_fim - 1.5, y_baixo + 0.8, f"GND (preto): perna curta dos {len(leds)} LEDs", 2.0,
           f'text-anchor="end" fill="{COR_GND}" font-weight="bold"')
     y_b = yf[-1] + 18
     texto(5, y_b, "Cada fio de GPIO encaixa no pino S (amarelo) e tem o resistor do pino soldado no meio, coberto "
@@ -429,28 +442,27 @@ def escrever_ligacoes(leds, caminho):
         curva = (indice % 3 + 1) * 2.5 * (1 if indice % 2 else -1)
         for i, j in arvore(pts):
             fio(*pts[i], *pts[j], COR_FIO[pino], 0.7, curva)
-        saidas.append((pts, COR_FIO[pino], f"GPIO {pino}"))
-    saidas.append((list(catodos.values()), COR_GND, "GND"))
+        saidas.append((pts, COR_FIO[pino], f"GPIO {pino}", NOME_FIO[pino]))
+    saidas.append((list(catodos.values()), COR_GND, "GND", "preto"))
     # cada fio sai pela borda (de cima ou de baixo) mais perto de um dos seus LEDs
     em_cima, embaixo = [], []
-    for pts, cor, rotulo in saidas:
+    for pts, cor, rotulo, nome_cor in saidas:
         x, y = min(pts, key=lambda q: min(q[1] - vy, y_base - q[1]))
-        (em_cima if y - vy < y_base - y else embaixo).append((x, y, cor, rotulo))
+        (em_cima if y - vy < y_base - y else embaixo).append((x, y, cor, rotulo, nome_cor))
     for grupo, sinal in ((em_cima, -1), (embaixo, 1)):
         grupo.sort(key=lambda sd: sd[0])
         borda = vy if sinal < 0 else y_base
-        xs_rotulo = espalhar([g[0] for g in grupo], 12, vx + 5, vx + LARGURA * k - 5)
+        xs_rotulo = espalhar([g[0] for g in grupo], 19, vx + 9, vx + LARGURA * k - 9)
         y_txt = borda + sinal * (1.5 + len(grupo) * 1.1 + 2.2) + (2 if sinal > 0 else 0)
-        for i, ((x, y, cor, rotulo), xr) in enumerate(zip(grupo, xs_rotulo)):
+        for i, ((x, y, cor, rotulo, nome_cor), xr) in enumerate(zip(grupo, xs_rotulo)):
             y_nivel = borda + sinal * (1.5 + i * 1.1)
             y_ponta = borda + sinal * (1.5 + len(grupo) * 1.1 + 0.6)
-            s.append(f'<path d="M{x:.2f} {y:.2f}V{y_nivel:.2f}H{xr:.2f}V{y_ponta:.2f}" fill="none" stroke="{cor}" '
-                     f'stroke-width="{0.7 if rotulo != "GND" else 0.45}" stroke-linejoin="round"/>')
-            texto(xr, y_txt, rotulo, 2.1, f'text-anchor="middle" fill="{cor}" font-weight="bold"')
+            traco(f"M{x:.2f} {y:.2f}V{y_nivel:.2f}H{xr:.2f}V{y_ponta:.2f}", cor, 0.7 if rotulo != "GND" else 0.45)
+            texto(xr, y_txt, f"{rotulo} ({nome_cor})", 1.9, 'text-anchor="middle" fill="#222" font-weight="bold"')
     pino_de = {i: pino for pino, _, _, ids in por_pino for i in ids}
     for id_ in ids_todos:
         s.append(f'<circle cx="{anodos[id_][0]:.2f}" cy="{anodos[id_][1]:.2f}" r="0.55" '
-                 f'fill="{COR_FIO[pino_de[id_]]}"/>')
+                 f'fill="{COR_FIO[pino_de[id_]]}" stroke="{CONTORNO_FIO}" stroke-width="0.15"/>')
         s.append(f'<circle cx="{catodos[id_][0]:.2f}" cy="{catodos[id_][1]:.2f}" r="0.55" fill="{COR_GND}"/>')
     y_nota = y_base + 15.5
     texto(5, y_nota, "Perna longa (anodo, ponto colorido) para cima: os LEDs do mesmo pino ficam ligados pelo fio "
@@ -461,8 +473,8 @@ def escrever_ligacoes(leds, caminho):
     # --- 3. Tabela --------------------------------------------------------
     ty = y_nota + 15
     texto(5, ty - 5, "3. Tabela por pino", 3.4, 'font-weight="bold"')
-    colunas = [(5, "Pino"), (22, "Grupo"), (66, "Cor"), (82, "Resistor"), (98, "LEDs"), (110, "mA"),
-               (120, "LEDs (docs/leds.csv)")]
+    colunas = [(5, "Pino"), (23, "Fio"), (38, "Grupo"), (82, "LED"), (97, "Resistor"), (112, "LEDs"),
+               (122, "mA"), (131, "LEDs (docs/leds.csv)")]
     for x, t in colunas:
         texto(x, ty, t, 2.4, 'font-weight="bold"')
     for i, (pino, n, lado, ids) in enumerate(por_pino):
@@ -470,13 +482,14 @@ def escrever_ligacoes(leds, caminho):
         y = ty + 5.5 + i * 5
         if i % 2 == 0:
             s.append(f'<rect x="4" y="{y - 3.6}" width="{w - 8}" height="5" fill="#f2f2f2"/>')
-        s.append(f'<rect x="5" y="{y - 2.6}" width="2.6" height="2.6" fill="{COR_FIO[pino]}"/>')
+        s.append(f'<rect x="5" y="{y - 2.6}" width="2.6" height="2.6" fill="{COR_FIO[pino]}" '
+                 f'stroke="{CONTORNO_FIO}" stroke-width="0.2"/>')
         grupo = f"{n} {nome}" + (" (esq.)" if lado == "metade esquerda" else " (dir.)" if lado else "")
         r = resistor_do_pino(pino)
-        valores = [f"GPIO {pino}", grupo, cor, f"{r} Ω", len(ids),
+        valores = [f"GPIO {pino}", NOME_FIO[pino], grupo, cor, f"{r} Ω", len(ids),
                    f"{corrente_do_pino_ma(cor, r):.0f}", " ".join(ids)]
         for (x, _), v in zip(colunas, valores):
-            texto(x + (3.5 if x == 5 else 0), y, v, 2.1 if x == 120 else 2.4)
+            texto(x + (3.5 if x == 5 else 0), y, v, 2.0 if x in (38, 131) else 2.3)
     total = len(leds)
     texto(5, ty + 5.5 + len(por_pino) * 5, f"Total: {total} LEDs, {len(por_pino)} resistores (um por pino), {len(por_pino)} pinos + GND. "
           "Esq./dir. = metade do rosto vista de frente.", 2.3, 'fill="#444"')
