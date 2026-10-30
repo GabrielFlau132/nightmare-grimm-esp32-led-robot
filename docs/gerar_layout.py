@@ -301,6 +301,9 @@ NOME_FIO = {pino: nome for pino, (nome, _) in zip(_PINOS_EM_ORDEM, CORES_DOS_FIO
 COR_FIO = {pino: cor for pino, (_, cor) in zip(_PINOS_EM_ORDEM, CORES_DOS_FIOS)}
 COR_GND = "#111111"
 CONTORNO_FIO = "#333333"  # borda escura: deixa o fio branco e o amarelo visíveis no papel
+# Buzzers piezo da música: mesmos pinos de PINOS_BUZZERS em config.h (buzzer 1 = voz 0).
+PINOS_BUZZERS = (16, 17, 21, 22, 14)
+COR_FIO_BUZZER = "#ff80ab"  # rosa
 # Shield de expansão do ESP32 (barras S/V/G), vista de cima, antena para cima.
 SHIELD_ESQUERDA = ["EN", "VP", "VN", "D34", "D35", "D32", "D33", "D25", "D26", "D27", "D14", "D12", "D13"]
 SHIELD_DIREITA = ["D23", "D22", "TX0", "RX0", "D21", "D19", "D18", "D5", "D17", "D16", "D4", "D2", "D15"]
@@ -372,6 +375,20 @@ def escrever_ligacoes(leds, caminho):
     s.append(f'<rect x="{cx - 13}" y="{y0 - 6}" width="26" height="{yf[-1] - y0 + 12:.2f}" rx="1.5" fill="#3d4a6b"/>')
     texto(cx, y0 - 1.5, "ESP32", 2.8, 'text-anchor="middle" fill="#fff" font-weight="bold"')
     texto(cx, yf[-1] + 3, "USB", 2.2, 'text-anchor="middle" fill="#fff"')
+    def desenhar_buzzer(indice, gpio, lado, y):
+        # + do buzzer no S, - no G da mesma fileira; piezo, sem resistor
+        x_s, x_g = cx + lado * 37, cx + lado * 28.6
+        x_bz, r_bz = x_s + lado * 9, 1.9
+        y_menos = y + 1.6
+        traco(f"M{x_s:.2f} {y:.2f}H{x_bz - lado * r_bz:.2f}", COR_FIO_BUZZER, 0.8)
+        traco(f"M{x_g:.2f} {y:.2f}V{y_menos:.2f}H{x_bz - lado * r_bz * 0.6:.2f}", COR_GND, 0.6)
+        s.append(f'<circle cx="{x_s:.2f}" cy="{y:.2f}" r="0.8" fill="{COR_FIO_BUZZER}" stroke="{CONTORNO_FIO}" stroke-width="0.2"/>')
+        s.append(f'<circle cx="{x_g:.2f}" cy="{y:.2f}" r="0.8" fill="{COR_GND}" stroke="#fff" stroke-width="0.2"/>')
+        s.append(f'<circle cx="{x_bz:.2f}" cy="{y + 0.6:.2f}" r="{r_bz}" fill="#222" stroke="{CONTORNO_FIO}" stroke-width="0.25"/>')
+        texto(x_bz, y + 1.2, "BZ", 1.3, 'text-anchor="middle" fill="#fff" font-weight="bold"')
+        texto(x_bz + lado * (r_bz + 1.2), y + 1.2, f"Buzzer {indice + 1} (voz {indice}): + no S, - no G", 1.9,
+              f'text-anchor="{"end" if lado < 0 else "start"}" fill="#222" font-weight="bold"')
+
     for nomes, lado in ((SHIELD_ESQUERDA, -1), (SHIELD_DIREITA, 1)):
         for letra, dx, cor_t in terminais:
             texto(cx + lado * dx, y0 - 4.5, letra, 2, f'text-anchor="middle" fill="{cor_t}" font-weight="bold"')
@@ -382,6 +399,9 @@ def escrever_ligacoes(leds, caminho):
             texto(cx + lado * 26.4, y + 0.7, nome, 1.9,
                   f'text-anchor="{"start" if lado < 0 else "end"}" fill="#ddd"')
             gpio = int(nome[1:]) if nome[0] == "D" and nome[1:].isdigit() else None
+            if gpio in PINOS_BUZZERS:
+                desenhar_buzzer(PINOS_BUZZERS.index(gpio), gpio, lado, y)
+                continue
             if gpio not in info_pino:
                 continue
             n, lado_rosto, ids = info_pino[gpio]
@@ -413,10 +433,12 @@ def escrever_ligacoes(leds, caminho):
           "com termo-retrátil (valor no desenho e na tabela).", 2.2, 'fill="#444"')
     texto(5, y_b + 3.6, "O fio preto do GND pode ir em qualquer pino G. Os pinos V não são usados, então a posição "
           "do jumper 5V/3.3V não importa.", 2.2, 'fill="#444"')
+    texto(5, y_b + 7.2, "Buzzers (piezo, sem resistor): fio rosa do + no pino S e fio preto do - no pino G da mesma "
+          "fileira (GPIO 16, 17, 21, 22 e 14).", 2.2, 'fill="#444"')
 
     # --- 2. Fios entre os LEDs (vista de trás) ---------------------------
-    k = min(170 / LARGURA, 79 / ALTURA)  # ampliação da vista de trás
-    vx, vy = (w - LARGURA * k) / 2, y_b + 24
+    k = min(170 / LARGURA, 75 / ALTURA)  # ampliação da vista de trás
+    vx, vy = (w - LARGURA * k) / 2, y_b + 27
     texto(5, vy - 14, "2. Fios entre os LEDs: vista de trás (espelhada: a esquerda aqui é a direita do rosto)", 3.4,
           'font-weight="bold"')
     s.append(f'<rect x="{vx:.2f}" y="{vy:.2f}" width="{LARGURA * k:.2f}" height="{ALTURA * k:.2f}" '

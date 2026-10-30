@@ -1,4 +1,5 @@
 #include "rosto.h"
+#include "config.h"
 #include "grupos_led.h"
 
 namespace {
@@ -12,7 +13,10 @@ MascaraLeds mascaraOlhos(Olhos olhos) {
   switch (olhos) {
     case Olhos::ABERTOS:   // contorno completo (Feliz.png, Neutro.png...)
       return mascara(GrupoLed::OLHOS_ANEL) | mascara(GrupoLed::OLHOS_MEIO_LATERAL);
-    case Olhos::FECHADOS:  // só a barra do meio (piscando.png)
+    case Olhos::FECHADOS:  // olhos apagados, ou só a barra do meio (piscando.png)
+      if (PISCADA_APAGA_OLHOS) {
+        return 0;
+      }
       return mascara(GrupoLed::OLHOS_MEIO_LATERAL) | mascara(GrupoLed::OLHOS_MEIO_CENTRO);
   }
   return 0;

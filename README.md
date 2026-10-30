@@ -19,7 +19,17 @@ nightmare-grimm-esp32-led-robot/
 │       ├── expressoes.h/.cpp    tabela das cinco expressões
 │       ├── rosto.h/.cpp         expressão ativa + olhos, traduzidos em grupos
 │       ├── piscada.h/.cpp       piscada automática não bloqueante
-│       └── comandos.h/.cpp      serial, modo demonstração e teste de montagem
+│       ├── comandos.h/.cpp      serial, modo demonstração e teste de montagem
+│       ├── controle_wifi.h/.cpp página no celular para escolher a expressão
+│       ├── musica.h/.cpp        player das músicas nos 5 buzzers (lista em MUSICAS)
+│       ├── musica_eventos.h     formato das notas
+│       ├── musica_troupe_grimm.h  Troupe Master Grimm
+│       ├── musica_giornos_theme.h Il vento d'oro (Giorno's Theme)
+│       ├── musica_giornos_theme_reduzida.h  versão reduzida
+│       ├── musica_tetris.h      Tetris
+│       └── musica_winner_takes_it_all.h  The Winner Takes It All
+├── ferramentas/
+│   └── midi_para_buzzer.py      converte um MIDI em música para os buzzers
 ├── docs/
 │   ├── gerar_layout.py          define e confere a posição de cada LED (gera os arquivos abaixo)
 │   ├── leds.csv                 coordenadas de cada LED em mm
@@ -130,7 +140,7 @@ Arquivos gerados:
 | `mapa-leds.svg` | gabarito em escala 1:1 com o número do grupo em cada LED. Imprima em 100% e confira a régua de 10 mm |
 | `corte-frente.svg` | arquivo de corte da placa (115 × 55 mm): contorno e 58 furos de 2,7 mm, tudo em vermelho |
 | `expressoes.svg` | como cada expressão fica acesa |
-| `ligacoes.svg` | folha de ligações (A4): shield do ESP32, fios entre os LEDs na vista de trás e tabela por pino |
+| `ligacoes.svg` | folha de ligações (A4): shield do ESP32 com os LEDs e os 5 buzzers, fios entre os LEDs na vista de trás e tabela por pino |
 
 ## Ligação elétrica
 
@@ -203,9 +213,80 @@ o ESP32 fornece.
 
 ### Consumo
 
-O pior caso é `FELIZ_BRAVO`: 38 LEDs × 2 mA ≈ 76 mA, mais o ESP32
-(~0,05–0,1 A sem Wi-Fi). Uma porta USB ou a entrada DC do shield aguentam
-isso com folga.
+O pior caso é `FELIZ_BRAVO`: ~38 LEDs × 2 mA ≈ 76 mA, mais o ESP32 com o
+Wi-Fi ligado (~0,1–0,15 A, com picos de ~0,3 A). Use uma porta USB, um
+carregador de celular ou um powerbank na USB do shield. Bateria de 9 V não
+serve: a tensão cai rápido e o ESP32 reinicia sozinho.
+
+## Música nos buzzers
+
+O robô toca músicas em 5 buzzers passivos, uma voz por buzzer, todos ao mesmo
+tempo:
+
+| # | Música | Duração | Notas |
+|---|--------|---------|-------|
+| 1 | Troupe Master Grimm (Christopher Larkin) | 2:10 | 1267 |
+| 2 | Jojo: Il vento d'oro, Giorno's Theme (JoJo's Bizarre Adventure: Golden Wind) | 4:50 | 2854 |
+| 3 | Jojo (reduzida) | 0:29 | 361 |
+| 4 | Tetris (Korobeiniki) | 1:36 | 827 |
+| 5 | The Winner Takes It All (ABBA), arranjo Breeze Piano | 5:02 | 2305 |
+
+| Buzzer | Voz | GPIO | Canal LEDC |
+|--------|-----|------|------------|
+| 1      | 0   | 16   | 0          |
+| 2      | 1   | 17   | 2          |
+| 3      | 2   | 21   | 4          |
+| 4      | 3   | 22   | 6          |
+| 5      | 4   | 14   | 8          |
+
+- **Ligação:** positivo do buzzer no pino **S** do GPIO, negativo no pino **G**
+  da mesma fileira (desenho em `docs/ligacoes.svg`, fios rosa).
+- **Por que LEDC e não `tone()`:** neste núcleo do ESP32, o `tone()` usa um
+  único canal para tudo, então os 5 buzzers tocariam a mesma nota. Cada buzzer
+  tem o seu canal LEDC; os canais 0, 2, 4, 6 e 8 usam timers diferentes, então
+  cada um toca a sua própria frequência.
+- **Notas:** `musica_troupe_grimm.h` tem os 1267 eventos da versão anterior
+  (`code/TroupeMasterGrimm_ESP32_Basico.ino`), sem alteração: 130,5 s de música,
+  até 5 notas ao mesmo tempo.
+- **Mesma voz, duas notas:** cada buzzer só toca uma frequência por vez. Se
+  uma voz recebesse uma nota nova antes de a anterior acabar, a nova
+  substituiria a anterior. Nos dados atuais isso nunca acontece.
+- **Não bloqueia:** a música avança pelo `millis()` no `loop()`, junto com as
+  expressões, a piscada e o Wi-Fi.
+- **Como tocar:** um botão por música no celular (tocar de novo para), ou na
+  serial: `m` toca/para a música atual e `n` passa para a próxima.
+  O comando `b` testa os buzzers: cada um sozinho, depois os 5 juntos.
+- **GPIO 14** solta um sinal rápido quando o ESP32 liga: o buzzer dele pode
+  dar um clique no boot.
+
+### Acrescentar uma música
+
+O melhor formato é **MIDI** (`.mid`); arranjos de piano costumam soar melhor.
+
+```bash
+python ferramentas/midi_para_buzzer.py musica.mid NOME "Nome da música"
+```
+
+O script (precisa de `pip install mido`) gera `code/NightmareGrimm/musica_nome.h`
+e mostra quantas notas ficaram de fora. Depois, em `musica.cpp`, inclua o `.h`
+e acrescente uma linha em `MUSICAS`. Regras da conversão:
+
+- cada nota vai para um buzzer livre; dois sons nunca dividem um buzzer;
+- com mais de 5 notas ao mesmo tempo, ficam a mais aguda (melodia) e a mais
+  grave (baixo) e sai uma do meio do acorde;
+- notas seguidas no mesmo buzzer ganham uma pausa de 12 ms, senão duas notas
+  iguais viram um som contínuo;
+- notas com menos de 20 ms e bateria (canal 10) ficam de fora.
+
+Cada nota ocupa 12 bytes (uma música de 2 minutos ≈ 15 KB). Com as cinco
+músicas atuais o programa usa 95% da memória; para mais músicas, escolha
+**Ferramentas → Partition Scheme → Huge APP (3MB No OTA)** na Arduino IDE.
+
+**Atenção à corrente:** buzzer passivo **magnético** (tem bobina; o
+multímetro mede ~16–42 Ω entre os terminais) puxa corrente demais de um pino
+do ESP32. Coloque um resistor de 100 Ω em série com cada um, ou use um
+transistor. Buzzer **piezo** (o multímetro não mede resistência baixa) pode ir
+direto no pino.
 
 ## Montagem em MDF
 
@@ -252,6 +333,21 @@ isso com folga.
 3. Placa **ESP32 Dev Module** e porta COM. Clique em Carregar.
 4. Abra o Monitor Serial em **115200**.
 
+### Controle pelo celular
+
+O robô cria a própria rede Wi-Fi, sem precisar de internet nem de aplicativo:
+
+1. No celular, conecte na rede **NightmareGrimm** (senha **grimm1234**).
+2. Em muitos celulares a página abre sozinha. Se não abrir, abra o navegador e
+   entre em **http://192.168.4.1**.
+3. Toque na expressão. O botão aceso é a expressão atual; o botão
+   **Demonstração** liga e desliga a troca automática, e cada botão em
+   **Músicas** toca aquela música (tocar de novo para).
+
+O celular pode avisar que a rede "não tem internet". Escolha manter conectado.
+Nome e senha da rede ficam em `config.h` (`WIFI_NOME` / `WIFI_SENHA`, senha
+com pelo menos 8 caracteres).
+
 ### Comandos pelo Monitor Serial
 
 | Tecla | Ação |
@@ -259,11 +355,14 @@ isso com folga.
 | `1`–`5` | `FELIZ`, `FELIZ_BRAVO`, `BRAVO`, `NEUTRO`, `TRISTE` (e desliga a demonstração) |
 | `p` | pisca agora |
 | `d` | liga/desliga o modo demonstração (troca de expressão a cada 5 s) |
+| `m` | toca/para a música atual |
+| `n` | próxima música |
+| `b` | teste dos buzzers: um por vez, depois os 5 juntos |
 | `t` | teste de montagem: acende um grupo por vez, de 1 a 8, e volta ao rosto |
 | `?` | ajuda |
 
-Ao ligar, o robô começa em `NEUTRO` com a demonstração ativa. Isso permite ver
-todas as expressões sem computador.
+Ao ligar, o robô começa em `NEUTRO` com a demonstração ativa. Escolher uma
+expressão (pela serial ou pelo celular) desliga a demonstração.
 
 ### Ajustes (`config.h`)
 
@@ -273,10 +372,14 @@ todas as expressões sem computador.
 | `NIVEL_LED_ACESO` | `HIGH` | `HIGH` com LED entre o pino e o GND (ligação do README). `LOW` com LED entre o 3V3 e o pino |
 | `EXPRESSAO_INICIAL` | `NEUTRO` | expressão ao ligar |
 | `DEMO_AO_LIGAR` / `DEMO_INTERVALO_MS` | `true` / 5000 | modo demonstração |
+| `WIFI_NOME` / `WIFI_SENHA` | `NightmareGrimm` / `grimm1234` | rede criada pelo robô para o controle no celular |
+| `PINOS_BUZZERS` / `CANAIS_BUZZERS` | 16, 17, 21, 22, 14 / 0, 2, 4, 6, 8 | pino e canal LEDC de cada buzzer (cada canal precisa de um timer próprio) |
+| `PISCADA_ATIVA` | `true` | liga a piscada automática |
+| `PISCADA_APAGA_OLHOS` | `true` | olho fechado = olhos apagados (sem os fios laranja e amarelo). Com `false`, o olho fechado acende a barra do meio (precisa dos fios laranja, GPIO 26, e amarelo, GPIO 27) |
 | `PISCADA_INTERVALO_MIN_MS` / `_MAX_MS` | 2500 / 6000 | espera sorteada entre piscadas |
-| `PISCADA_FECHADO_MS` | 150 | tempo com os olhos fechados |
+| `PISCADA_FECHADO_MS` | 80 | tempo com os olhos fechados |
 | `PISCADA_DUPLA_CHANCE` | 20 | % de chance de piscar duas vezes (0 desliga) |
-| `PISCADA_DUPLA_PAUSA_MS` | 120 | olhos abertos entre as duas piscadas |
+| `PISCADA_DUPLA_PAUSA_MS` | 100 | olhos abertos entre as duas piscadas |
 
 ### Como funciona
 

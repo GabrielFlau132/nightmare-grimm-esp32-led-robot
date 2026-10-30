@@ -1,6 +1,8 @@
 #include "comandos.h"
 #include "config.h"
+#include "controle_wifi.h"
 #include "grupos_led.h"
+#include "musica.h"
 #include "piscada.h"
 #include "rosto.h"
 
@@ -24,8 +26,14 @@ void mostrarAjuda() {
     const DefinicaoExpressao& definicao = expressaoDefinicao(Expressao(i));
     Serial.printf("  %u  %-12s %s\n", i + 1, definicao.nome, definicao.simbolo);
   }
-  Serial.println(F("  p  piscar agora"));
+  if (PISCADA_ATIVA) {
+    Serial.println(F("  p  piscar agora"));
+  }
   Serial.println(F("  d  liga/desliga o modo demonstração"));
+  Serial.println(F("  m  toca/para a música"));
+  Serial.println(F("  n  próxima música"));
+  Serial.println(F("  b  teste dos buzzers (um por vez, depois os 5 juntos)"));
+  Serial.println(F("  w  estado do Wi-Fi"));
   Serial.println(F("  t  teste de montagem (um grupo de LEDs por vez)"));
   Serial.println(F("  ?  esta ajuda"));
 }
@@ -81,28 +89,61 @@ void atualizarDemo(uint32_t agora) {
   mudarExpressao(Expressao(proxima));
 }
 
+// Escolha feita por uma pessoa (serial ou celular): para o teste e a demonstração.
+void escolherExpressao(Expressao expressao, uint32_t agora) {
+  pararTeste(agora);
+  demoAtivo = false;
+  mudarExpressao(expressao);
+}
+
+void definirDemo(bool ligada, uint32_t agora) {
+  demoAtivo = ligada;
+  ultimaTrocaDemo = agora;
+  Serial.println(demoAtivo ? F("Demonstração ligada.") : F("Demonstração desligada."));
+}
+
 void tratarComando(char comando, uint32_t agora) {
   // '1'..'5' escolhem a expressão e desligam a demonstração.
   if (comando >= '1' && comando < char('1' + TOTAL_EXPRESSOES)) {
-    pararTeste(agora);
-    demoAtivo = false;
-    mudarExpressao(Expressao(comando - '1'));
+    escolherExpressao(Expressao(comando - '1'), agora);
     return;
   }
 
   switch (comando) {
     case 'p':
     case 'P':
-      if (!testeAtivo) {
+      if (PISCADA_ATIVA && !testeAtivo) {
         piscadaAgora(agora);
       }
       break;
 
     case 'd':
     case 'D':
-      demoAtivo = !demoAtivo;
-      ultimaTrocaDemo = agora;
-      Serial.println(demoAtivo ? F("Demonstração ligada.") : F("Demonstração desligada."));
+      definirDemo(!demoAtivo, agora);
+      break;
+
+    case 'm':
+    case 'M':
+      if (musicaTocando()) {
+        musicaParar();
+      } else {
+        musicaTocar(musicaSelecionada(), agora);
+      }
+      break;
+
+    case 'n':
+    case 'N':
+      musicaTocar((musicaSelecionada() + 1) % musicaQuantidade(), agora);
+      break;
+
+    case 'w':
+    case 'W':
+      controleWifiMostrarEstado();
+      break;
+
+    case 'b':
+    case 'B':
+      musicaTestarBuzzers(agora);
       break;
 
     case 't':
@@ -149,4 +190,16 @@ void comandosAtualizar(uint32_t agora) {
 
 bool comandosTesteAtivo() {
   return testeAtivo;
+}
+
+void comandosEscolherExpressao(Expressao expressao) {
+  escolherExpressao(expressao, millis());
+}
+
+void comandosDefinirDemo(bool ligada) {
+  definirDemo(ligada, millis());
+}
+
+bool comandosDemoAtiva() {
+  return demoAtivo;
 }
